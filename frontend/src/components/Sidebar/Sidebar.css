@@ -1,5 +1,5 @@
 .sidebar {
-  width: 280px;
+  width: 17.5rem; /* 280px */
   background: var(--bg-panel);
   padding: 1.5rem;
   display: flex;
@@ -7,6 +7,40 @@
   border-right: 1px solid var(--border-color);
   box-shadow: var(--shadow-md);
   z-index: 10;
+  flex-shrink: 0;
+}
+
+@media (max-width: 1024px) {
+  .sidebar {
+    width: 100%;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    border-right: none;
+    border-bottom: 1px solid var(--border-color);
+    padding: 1rem;
+  }
+  
+  .actions {
+    flex-direction: row;
+    gap: 0.5rem;
+  }
+  
+  .logo {
+    margin-bottom: 0;
+    font-size: 1.25rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .sidebar {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: stretch;
+  }
+  .actions {
+    flex-direction: column;
+  }
 }
 
 .logo {
@@ -23,32 +57,3 @@
   gap: 1rem;
 }
 
-.battery {
-  margin-top: auto;
-  background: #f9fafb;
-  padding: 1rem;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border-color);
-}
-
-.battery p {
-  margin: 0 0 0.5rem 0;
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--text-muted);
-}
-
-.battery-bar {
-  height: 8px;
-  background: #e5e7eb;
-  border-radius: 999px;
-  overflow: hidden;
-}
-
-.battery-fill {
-  width: 84%;
-  height: 100%;
-  background: #10b981; /* Emerald-500 */
-  border-radius: 999px;
-  transition: width 0.3s ease;
-}

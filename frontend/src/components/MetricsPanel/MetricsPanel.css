@@ -1,5 +1,5 @@
 .metrics {
-  width: 320px;
+  width: 20rem; /* 320px */
   background: var(--bg-panel);
   padding: 1.5rem;
   border-left: 1px solid var(--border-color);
@@ -9,6 +9,33 @@
   gap: 2rem;
   overflow-y: auto;
   z-index: 10;
+  flex-shrink: 0;
+}
+
+@media (max-width: 1024px) {
+  .metrics {
+    width: 100%;
+    border-left: none;
+    border-top: 1px solid var(--border-color);
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 1.5rem;
+  }
+  
+  .metrics-section {
+    flex: 1;
+    min-width: 250px;
+  }
+}
+
+@media (max-width: 640px) {
+  .metrics {
+    flex-direction: column;
+  }
+  .metrics-section {
+    width: 100%;
+  }
 }
 
 .metrics-header h2 {

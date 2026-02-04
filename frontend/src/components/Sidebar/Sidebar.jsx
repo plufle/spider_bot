@@ -12,12 +12,6 @@ export default function Sidebar() {
         <ActionButton text="Connect Robot" />
       </div>
 
-      <div className="battery">
-        <p>Battery 84%</p>
-        <div className="battery-bar">
-          <div className="battery-fill" />
-        </div>
-      </div>
     </aside>
   );
 }

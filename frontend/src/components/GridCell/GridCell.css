@@ -1,11 +1,19 @@
 .cell {
-  width: 70px;
-  height: 70px;
+  width: 4.375rem; /* 70px */
+  height: 4.375rem;
   border-radius: var(--radius-md);
   border: 1px solid rgba(0,0,0,0.05); /* Very subtle border */
   box-shadow: var(--shadow-sm);
   transition: all 0.2s ease;
   background: white;
+}
+
+@media (max-width: 500px) {
+  .cell {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1;
+  }
 }
 
 .cell.robot {

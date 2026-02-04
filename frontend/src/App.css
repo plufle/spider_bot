@@ -4,3 +4,12 @@
   width: 100vw;
   overflow: hidden;
 }
+
+@media (max-width: 1024px) {
+  .app-layout {
+    flex-direction: column;
+    overflow-y: auto;
+    height: auto;
+    min-height: 100vh;
+  }
+}
