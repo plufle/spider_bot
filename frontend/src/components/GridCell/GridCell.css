@@ -1,0 +1,31 @@
+.cell {
+  width: 70px;
+  height: 70px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(0,0,0,0.05); /* Very subtle border */
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s ease;
+  background: white;
+}
+
+.cell.robot {
+  background: var(--primary);
+  box-shadow: 0 0 10px rgba(79, 70, 229, 0.4);
+  border: none;
+}
+
+.cell.goal {
+  background: #10b981;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+  border: none;
+}
+
+.cell.obstacle {
+  background: #ef4444;
+  opacity: 0.8;
+  border: none;
+}
+
+.cell.empty {
+  background: white;
+}

@@ -1,0 +1,27 @@
+.action-btn {
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  background: var(--bg-panel);
+  color: var(--text-main);
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  font-size: 0.9rem;
+}
+
+.action-btn:hover {
+  background: #f9fafb;
+  border-color: #d1d5db;
+}
+
+.action-btn.primary {
+  background: var(--primary);
+  color: white;
+  border: 1px solid transparent;
+  box-shadow: var(--shadow-sm);
+}
+
+.action-btn.primary:hover {
+  background: var(--primary-hover);
+}

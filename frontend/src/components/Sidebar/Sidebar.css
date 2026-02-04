@@ -1,0 +1,54 @@
+.sidebar {
+  width: 280px;
+  background: var(--bg-panel);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border-color);
+  box-shadow: var(--shadow-md);
+  z-index: 10;
+}
+
+.logo {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 2rem;
+  color: var(--primary);
+  letter-spacing: -0.025em;
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.battery {
+  margin-top: auto;
+  background: #f9fafb;
+  padding: 1rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+}
+
+.battery p {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.battery-bar {
+  height: 8px;
+  background: #e5e7eb;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.battery-fill {
+  width: 84%;
+  height: 100%;
+  background: #10b981; /* Emerald-500 */
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}

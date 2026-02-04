@@ -1,0 +1,11 @@
+.heatmap {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+}
+
+.heatcell {
+  aspect-ratio: 1;
+  background: var(--primary);
+  border-radius: 4px;
+}
