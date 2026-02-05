@@ -1,5 +1,6 @@
 .metrics {
-  width: 20rem; /* 320px */
+  width: 17rem;
+  /* 320px */
   background: var(--bg-panel);
   padding: 1.5rem;
   border-left: 1px solid var(--border-color);
@@ -22,7 +23,7 @@
     align-items: flex-start;
     gap: 1.5rem;
   }
-  
+
   .metrics-section {
     flex: 1;
     min-width: 250px;
@@ -33,6 +34,7 @@
   .metrics {
     flex-direction: column;
   }
+
   .metrics-section {
     width: 100%;
   }
