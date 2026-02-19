@@ -1,17 +1,33 @@
 import "./GridBoard.css";
 import GridCell from "../GridCell/GridCell";
-
+import { useState } from "react";
 const size = 5;
 
 export default function GridBoard() {
-  const robot = [0, 0];
-  const goal = [4, 4];
+  let array = [...Array(size * size)];
+  array.fill(0);
+  const [grid,setGrid] = useState(array);
+  const [robot,setRobot] = useState(array);
 
-  const obstacles = [
-    [1, 1],
-    [1, 2],
-    [3, 2],
-  ];
+  function updateGrid(id) {
+    setGrid((prev) => {
+      const newGrid = [...prev];
+      if (newGrid[id] === 0) newGrid[id] = -100; 
+      else if (newGrid[id] === -100) newGrid[id] = 100; 
+      else if (newGrid[id] === 100) newGrid[id] = 1; 
+      else if (newGrid[id] === 1) newGrid[id] = 0;
+
+      if(newGrid.filter(val=>val===1).length>1){
+        alert("No More Than One Start State")
+        newGrid[id] = 0;
+      }
+      if(newGrid.filter(val=>val===100).length>1){
+        alert("No More Than  One Goal State")
+        newGrid[id] = 0;
+      }
+      return newGrid;
+    });
+  }
 
   return (
     <main className="gridboard">
@@ -23,14 +39,18 @@ export default function GridBoard() {
             <span className="status-badge">Active</span>
           </div>
           <div className="grid">
-            {[...Array(size * size)].map((_, i) => {
-              const r = Math.floor(i / size);
-              const c = i % size;
+            {grid.map((val, i) => {
               let type = "empty";
-              if (r === robot[0] && c === robot[1]) type = "robot";
-              else if (r === goal[0] && c === goal[1]) type = "goal";
-              else if (obstacles.some(o => o[0] === r && o[1] === c)) type = "obstacle";
-              return <GridCell key={i} type={type} />;
+              if (val === 1) type = "start";
+              else if (val === 100) type = "goal";
+              else if (val === -100) type = "obstacle";
+              return (
+                <GridCell
+                  key={i}
+                  type={type}
+                  onClick={() => updateGrid(i)}
+                />
+              );
             })}
           </div>
         </div>
@@ -42,15 +62,12 @@ export default function GridBoard() {
             <span className="status-badge sensor">LIDAR</span>
           </div>
           <div className="grid">
-            {[...Array(size * size)].map((_, i) => {
-              const r = Math.floor(i / size);
-              const c = i % size;
+            {robot.map((val, i) => {
               let type = "empty";
-              // Simulating same view for now
-              if (r === robot[0] && c === robot[1]) type = "robot";
-              else if (r === goal[0] && c === goal[1]) type = "goal";
-              else if (obstacles.some(o => o[0] === r && o[1] === c)) type = "obstacle";
-              return <GridCell key={`robot-${i}`} type={type} />;
+              if (val === 1) type = "start";
+              else if (val === 100) type = "goal";
+              else if (val === -100) type = "obstacle";
+              return <GridCell key={i} type={type} />;
             })}
           </div>
         </div>
@@ -61,7 +78,7 @@ export default function GridBoard() {
         <div className="legend-items">
           <div className="legend-item">
             <div className="legend-color robot"></div>
-            <span>Robot Agent</span>
+            <span>Start State</span>
           </div>
           <div className="legend-item">
             <div className="legend-color goal"></div>

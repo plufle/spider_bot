@@ -16,7 +16,7 @@
   }
 }
 
-.cell.robot {
+.cell.start {
   background: var(--primary);
   box-shadow: 0 0 10px rgba(79, 70, 229, 0.4);
   border: none;
