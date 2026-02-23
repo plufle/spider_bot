@@ -1,8 +1,8 @@
 import "./ActionButton.css";
 
-export default function ActionButton({ text, primary}) {
+export default function ActionButton({ text, primary,setLocked}) {
   return (
-    <button className={`action-btn ${primary ? "primary" : ""}`}>
+    <button className={`action-btn ${primary ? "primary" : ""}`} onClick={()=>setLocked(true)}>
       {text}
     </button>
   );

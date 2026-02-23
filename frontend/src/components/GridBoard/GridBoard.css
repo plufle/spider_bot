@@ -52,14 +52,22 @@
 }
 
 .status-badge {
-  background: #ecfdf5;
-  color: #059669;
   padding: 0.25rem 0.75rem;
   border-radius: 9999px;
   font-size: 0.75rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+}
+
+.status-badge.locked {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.status-badge.active {
+  background: #ecfdf5;
+  color: #059669;
 }
 
 .status-badge.sensor {

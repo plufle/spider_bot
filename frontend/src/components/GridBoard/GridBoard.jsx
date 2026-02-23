@@ -1,15 +1,10 @@
 import "./GridBoard.css";
 import GridCell from "../GridCell/GridCell";
-import { useState } from "react";
 const size = 5;
 
-export default function GridBoard() {
-  let array = [...Array(size * size)];
-  array.fill(0);
-  const [grid,setGrid] = useState(array);
-  const [robot,setRobot] = useState(array);
-
+export default function GridBoard({locked,grid,setGrid,robot,setRobot}) {
   function updateGrid(id) {
+    if(locked) return;
     setGrid((prev) => {
       const newGrid = [...prev];
       if (newGrid[id] === 0) newGrid[id] = -100; 
@@ -36,7 +31,7 @@ export default function GridBoard() {
         <div className="board-container">
           <div className="board-header">
             <h1>Environment View</h1>
-            <span className="status-badge">Active</span>
+            <span className={`status-badge ${locked ? "locked" : "active"}`}>{locked ? "Locked" : "Active"}</span>
           </div>
           <div className="grid">
             {grid.map((val, i) => {
