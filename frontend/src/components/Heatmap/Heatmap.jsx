@@ -1,16 +1,10 @@
 import "./Heatmap.css";
-import { useMemo } from "react";
 
-export default function Heatmap() {
-  const values = useMemo(
-    () => Array.from({ length: 25 }, () => Math.random()),
-    [] // only compute once on mount
-  );
-
+export default function Heatmap({ values = Array(25).fill(0) }) {
   return (
     <div className="heatmap">
       {values.map((v, i) => (
-        <div key={i} className="heatcell" style={{ opacity: v }} />
+        <div key={i} className="heatcell" style={{ opacity: Math.max(0.1, Math.min(v || 0, 1)) }} />
       ))}
     </div>
   );
