@@ -4,7 +4,12 @@ export default function Heatmap({ values = Array(25).fill(0) }) {
   return (
     <div className="heatmap">
       {values.map((v, i) => (
-        <div key={i} className="heatcell" style={{ opacity: Math.max(0.1, Math.min(v || 0, 1)) }} />
+        <div 
+          key={i} 
+          className="heatcell" 
+        >
+          {Number(v || 0).toFixed(2)}
+        </div>
       ))}
     </div>
   );

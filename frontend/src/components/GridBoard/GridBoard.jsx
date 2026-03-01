@@ -62,6 +62,7 @@ export default function GridBoard({locked,grid,setGrid,robot,setRobot}) {
               if (val === 1) type = "start";
               else if (val === 100) type = "goal";
               else if (val === -100) type = "obstacle";
+              else if (val === 2) type = "robot";
               return <GridCell key={i} type={type} />;
             })}
           </div>

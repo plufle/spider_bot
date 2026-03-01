@@ -1,10 +1,11 @@
-.heatmap {
+.best-route-grid {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   gap: 0.25rem;
+  margin-top: 10px;
 }
 
-.heatcell {
+.route-cell {
   aspect-ratio: 1;
   background: var(--bg-app);
   border: 1px solid var(--border-color);
@@ -12,7 +13,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.75rem;
-  font-weight: 600;
+  font-size: 1.25rem;
+  font-weight: 700;
   color: var(--text-main);
+}
+
+.route-cell.start {
+  color: var(--primary);
 }

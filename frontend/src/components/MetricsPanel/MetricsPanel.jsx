@@ -1,28 +1,9 @@
 import "./MetricsPanel.css";
 import Heatmap from "../Heatmap/Heatmap";
 import Logs from "../Logs/Logs";
-import { useState, useEffect } from "react";
+import BestRoute from "./BestRoute";
 
-export default function MetricsPanel() {
-  const [qTable, setQTable] = useState(Array(25).fill(0));
-  const [logs, setLogs] = useState(["[00:00:00] Waiting for data..."]);
-
-  useEffect(() => {
-    const fetchMetrics = () => {
-      fetch(`${import.meta.env.VITE_API_URL}/metrics`)
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.q_table) setQTable(data.q_table);
-          if (data.logs) setLogs(data.logs);
-        })
-        .catch((err) => console.log("Error fetching metrics:", err));
-    };
-
-    fetchMetrics();
-    const interval = setInterval(fetchMetrics, 1000);
-    return () => clearInterval(interval);
-  }, []);
-
+export default function MetricsPanel({ qTable, fullQTable, grid, logs }) {
   return (
     <aside className="metrics">
       <div className="metrics-header">
@@ -38,6 +19,13 @@ export default function MetricsPanel() {
         <h3>Activity Logs</h3>
         <Logs logs={logs} />
       </div>
+
+      {fullQTable && (
+        <div className="metrics-section">
+          <h3>Best Route Policy</h3>
+          <BestRoute fullQTable={fullQTable} grid={grid} />
+        </div>
+      )}
     </aside>
   );
 }
