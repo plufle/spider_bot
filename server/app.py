@@ -4,12 +4,16 @@ import random
 import time
 import serial
 import threading
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import torch.nn.functional as F
+from collections import deque
 
 app = Flask(__name__)
 CORS(app)
 
 grid = [0 for _ in range(25)]
-q_table = [[0.0 for _ in range(4)] for _ in range(25)]
 robot_grid = [0 for _ in range(25)]
 server_logs = ["[00:00:00] System initialized.", "Started"]
 
@@ -22,8 +26,58 @@ is_exploring = False
 # Hardcoded config from user request
 PORT = "COM12"
 BAUD = 9600
-
 SIMULATE_BT = True
+
+# --- DQN Setup ---
+class DQN(nn.Module):
+    def __init__(self, input_size=50, hidden_size=64, num_actions=4):
+        super(DQN, self).__init__()
+        self.fc1 = nn.Linear(input_size, hidden_size)
+        self.fc2 = nn.Linear(hidden_size, hidden_size)
+        self.fc3 = nn.Linear(hidden_size, num_actions)
+        
+    def forward(self, x):
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        return self.fc3(x)
+
+class ReplayBuffer:
+    def __init__(self, capacity=2000):
+        self.buffer = deque(maxlen=capacity)
+    def push(self, state, action, reward, next_state, done):
+        self.buffer.append((state, action, reward, next_state, done))
+    def sample(self, batch_size):
+        return random.sample(self.buffer, batch_size)
+    def __len__(self):
+        return len(self.buffer)
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+policy_net = DQN(50, 64, 4).to(device)
+target_net = DQN(50, 64, 4).to(device)
+target_net.load_state_dict(policy_net.state_dict())
+target_net.eval()
+
+optimizer = optim.Adam(policy_net.parameters(), lr=0.005)
+memory = ReplayBuffer(2000)
+
+training_metrics = {
+    "loss_history": [],
+    "recent_memory": [],
+    "memory_size": 0,
+    "architecture": "Input(50) -> FC(64) -> FC(64) -> Output(4)"
+}
+latest_grid = [0] * 25
+
+def get_state_tensor(client_grid, start_state):
+    map_features = torch.zeros(25)
+    for i, val in enumerate(client_grid):
+        if val == 100: map_features[i] = 1.0
+        elif val == -100: map_features[i] = -1.0
+    pos_features = torch.zeros(25)
+    pos_features[start_state] = 1.0
+    
+    # Add batch dimension as [1, 50]
+    return torch.cat((map_features, pos_features)).unsqueeze(0).to(device)
 
 class SimulatedBluetooth:
     def __init__(self):
@@ -37,7 +91,7 @@ class SimulatedBluetooth:
         pass
         
     def readline(self):
-        time.sleep(0.5) # Simulate hardware instruction handling time
+        time.sleep(0.5)
         return b"done\n"
         
     def close(self):
@@ -68,8 +122,6 @@ def send_command(cmd: str, label: str):
     try:
         bt.write(cmd.encode())
         log_message(f"Sent: {cmd} ({label})")
-        
-        # Wait for "done" response (max 3 sec)
         start = time.time()
         while time.time() - start < 3:
             if bt.in_waiting:
@@ -102,7 +154,7 @@ def connect_robot():
             bt.close()
             
         bt = serial.Serial(PORT, BAUD, timeout=1)
-        time.sleep(2)  # Wait for Bluetooth handshake
+        time.sleep(2)
         bt_status = "online"
         log_message("Connected to Robot!")
         return jsonify({"status": "success", "bt_status": bt_status})
@@ -121,11 +173,20 @@ def getgrid():
 
 @app.route("/metrics", methods=['GET'])
 def metrics():
-    heatmap_q = [max(state_q) for state_q in q_table]
+    current_q_table = [[0.0]*4 for _ in range(25)]
+    # Evaluate DQN for every state on the latest grid
+    with torch.no_grad():
+        for i in range(25):
+            st_tensor = get_state_tensor(latest_grid, i)
+            q_vals = policy_net(st_tensor).squeeze().tolist()
+            current_q_table[i] = q_vals
+
+    heatmap_q = [max(state_q) for state_q in current_q_table]
     return jsonify({
         "q_table": heatmap_q,
-        "full_q_table": q_table,
-        "logs": server_logs
+        "full_q_table": current_q_table,
+        "logs": server_logs,
+        "metrics": training_metrics
     })
 
 @app.route("/robot_state", methods=['GET'])
@@ -147,13 +208,13 @@ def explore():
     client_grid = data.get('grid', [])
     if not client_grid or len(client_grid) != 25:
         log_message("Error: Invalid grid received.")
-        return jsonify({"status": "error", "message": "Invalid grid"})
+        return jsonify({"status": "error"})
 
     try:
         start_state = client_grid.index(1)
     except ValueError:
-        log_message("Error: No start state (1) found.")
-        return jsonify({"status": "error", "message": "No start state"})
+        log_message("Error: No start state.")
+        return jsonify({"status": "error"})
 
     robot_grid = [0] * 25
     robot_grid[start_state] = 1
@@ -166,15 +227,11 @@ def explore():
         global robot_pos, is_exploring, robot_grid
         path = []
         visited = set()
-        
-        # 0: North, 1: East, 2: South, 3: West
         current_orientation = 0 
         
         def turn_to(target_dir):
             nonlocal current_orientation
-            if target_dir == current_orientation:
-                return
-                
+            if target_dir == current_orientation: return
             diff = (target_dir - current_orientation) % 4
             if diff == 1:
                 send_command('R', 'Turn Right')
@@ -184,7 +241,6 @@ def explore():
                 send_command('R', 'Turn Right')
             elif diff == 3:
                 send_command('L', 'Turn Left')
-                
             current_orientation = target_dir
             time.sleep(0.5)
 
@@ -195,58 +251,44 @@ def explore():
             path.append(current)
             robot_grid[current] = client_grid[current]
             
-            # Don't explore from obstacles or goals
             if client_grid[current] in [-100, 100]:
                 return
                 
             for action in range(4):
                 next_state = get_next_state(current, action)
                 if next_state != current and next_state not in visited:
-                    # Peek at next state first
                     if client_grid[next_state] == -100:
-                        # It's an obstacle, mark it but don't move there physically
                         visited.add(next_state)
                         robot_grid[next_state] = -100
-                        log_message(f"Detected obstacle at {next_state}")
+                        log_message(f"Obstacle at {next_state}")
                         continue
                         
-                    # Move physically
                     turn_to(action)
                     send_command('F', 'Forward')
-                    
-                    # Ensure simulation wait time matches physical wait
-                    time.sleep(1) # Base delay
+                    time.sleep(1)
 
-                    # Move to the next state
                     dfs(next_state)
                     
-                    # Backtrack to current physically
-                    # To backtrack, turn 180 and move forward, or move backward if supported
-                    # Based on commands, we have 'B' for backward
-                    turn_to(action) # Ensure we are facing the way we went
+                    turn_to(action)
                     send_command('B', 'Backward')
                     time.sleep(1)
                     
                     path.append(current)
                     robot_pos = current
 
-        log_message("Robot started hardware continuous exploration...")
-        
-        # Initial stand up if connected
+        log_message("Exploration starting...")
         if bt and bt.is_open:
             send_command('U', 'Stand Up')
             time.sleep(1)
             
         dfs(start_state)
         
-        # Sit down when done
         if bt and bt.is_open:
             send_command('T', 'Sit')
             
-        log_message(f"Exploration completed. Mapped {len(visited)} states in {len(path)} steps.")
+        log_message("Exploration completed.")
         is_exploring = False
 
-    # Start the hardware background execution thread
     thread = threading.Thread(target=execute_exploration)
     thread.daemon = True
     thread.start()
@@ -264,47 +306,107 @@ def train():
     try:
         start_state = client_grid.index(1)
     except Exception:
-        log_message("Error: No start state for training.")
+        log_message("Error: No start state.")
         return jsonify({"status": "error"})
 
-    lr = 0.1
+    global latest_grid, policy_net, target_net, optimizer, memory, training_metrics
+    latest_grid = client_grid
+    
+    lr = 0.005
     gamma = 0.9
-    epsilon = 0.1
-    episodes = 10000
+    epsilon = 1.0 
+    epsilon_min = 0.05
+    epsilon_decay = 0.99
+    episodes = 200
+    batch_size = 32
 
-    log_message(f"Started Q-Learning for {episodes} episodes.")
+    log_message(f"Started DQN for {episodes} episodes.")
+    training_metrics['loss_history'] = []
 
     for ep in range(episodes):
-        state = start_state
+        state_idx = start_state
+        state_tensor = get_state_tensor(client_grid, state_idx)
         done = False
         steps = 0
+        total_loss = 0
+        loss_steps = 0
         
         while not done and steps < 30:
             if random.random() < epsilon:
                 action = random.randint(0, 3)
             else:
-                action = q_table[state].index(max(q_table[state]))
+                with torch.no_grad():
+                    action = policy_net(state_tensor).argmax().item()
 
-            next_state = get_next_state(state, action)
+            next_state_idx = get_next_state(state_idx, action)
+            next_state_tensor = get_state_tensor(client_grid, next_state_idx)
             
-            if client_grid[next_state] == 100:
+            if client_grid[next_state_idx] == 100:
                 reward = 100
                 done = True
-            elif client_grid[next_state] == -100:
+            elif client_grid[next_state_idx] == -100:
                 reward = -100
                 done = True
-            elif state == next_state:
+            elif state_idx == next_state_idx:
                 reward = -5
             else:
                 reward = -1
 
-            best_next_q = max(q_table[next_state])
-            q_table[state][action] += lr * (reward + gamma * best_next_q - q_table[state][action])
-
-            state = next_state
+            memory.push(state_tensor, action, reward, next_state_tensor, done)
+            
+            state_idx = next_state_idx
+            state_tensor = next_state_tensor
             steps += 1
+            
+            if len(memory) >= batch_size:
+                transitions = memory.sample(batch_size)
+                # Unpack and stack states and next_states handling the [1, 50] shape from unsqueeze(0)
+                batch_state = torch.cat([t[0] for t in transitions])
+                batch_action = torch.tensor([t[1] for t in transitions]).unsqueeze(1).to(device)
+                batch_reward = torch.tensor([t[2] for t in transitions], dtype=torch.float32).to(device)
+                batch_next_state = torch.cat([t[3] for t in transitions])
+                batch_done = torch.tensor([t[4] for t in transitions], dtype=torch.float32).to(device)
+                
+                state_action_values = policy_net(batch_state).gather(1, batch_action).squeeze(-1)
+                
+                with torch.no_grad():
+                    next_state_values = target_net(batch_next_state).max(1)[0]
+                expected_state_action_values = batch_reward + (gamma * next_state_values * (1 - batch_done))
+                
+                loss = F.mse_loss(state_action_values, expected_state_action_values)
+                
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+                
+                total_loss += loss.item()
+                loss_steps += 1
+                
+        if epsilon > epsilon_min:
+            epsilon *= epsilon_decay
+        
+        if ep % 10 == 0:
+            target_net.load_state_dict(policy_net.state_dict())
+            
+        if loss_steps > 0:
+            training_metrics['loss_history'].append(total_loss / loss_steps)
 
-    log_message("Finished Q-Learning training.")
+    training_metrics['memory_size'] = len(memory)
+    recent = list(memory.buffer)[-50:] if len(memory) > 0 else []
+    def format_t(t):
+        s, a, r, _, d = t
+        pos_idx = s[0][25:].argmax().item() # s is shape [1, 50]
+        row = pos_idx // 5
+        col = pos_idx % 5
+        return {
+            "action": ["N","E","S","W"][a], 
+            "reward": float(r), 
+            "done": bool(d),
+            "coord": f"[{row},{col}]"
+        }
+    training_metrics['recent_memory'] = [format_t(t) for t in recent]
+
+    log_message("Finished DQN Training.")
     return jsonify({"status": "success"})
 
 if __name__ == '__main__':

@@ -1,6 +1,6 @@
 .cell {
-  width: 4.375rem; /* 70px */
-  height: 4.375rem;
+  width: 3rem; /* 48px */
+  height: 3rem;
   border-radius: var(--radius-md);
   border: 1px solid rgba(0,0,0,0.05); /* Very subtle border */
   box-shadow: var(--shadow-sm);

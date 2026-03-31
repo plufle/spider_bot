@@ -67,26 +67,27 @@ export default function GridBoard({locked,grid,setGrid,robot,setRobot,btStatus})
             })}
           </div>
         </div>
-      </div>
 
-      <div className="legend-container">
-        <h3>State & Symbol Legend</h3>
-        <div className="legend-items">
-          <div className="legend-item">
-            <div className="legend-color robot"></div>
-            <span>Start State</span>
-          </div>
-          <div className="legend-item">
-            <div className="legend-color goal"></div>
-            <span>Target Goal</span>
-          </div>
-          <div className="legend-item">
-            <div className="legend-color obstacle"></div>
-            <span>Obstacle</span>
-          </div>
-          <div className="legend-item">
-            <div className="legend-color empty"></div>
-            <span>Free Space</span>
+        {/* Legend */}
+        <div className="legend-container">
+          <h3>State & Symbol Legend</h3>
+          <div className="legend-items">
+            <div className="legend-item">
+              <div className="legend-color robot"></div>
+              <span>Start State</span>
+            </div>
+            <div className="legend-item">
+              <div className="legend-color goal"></div>
+              <span>Target Goal</span>
+            </div>
+            <div className="legend-item">
+              <div className="legend-color obstacle"></div>
+              <span>Obstacle</span>
+            </div>
+            <div className="legend-item">
+              <div className="legend-color empty"></div>
+              <span>Free Space</span>
+            </div>
           </div>
         </div>
       </div>

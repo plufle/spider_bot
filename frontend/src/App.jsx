@@ -2,6 +2,7 @@ import "./App.css";
 import Sidebar from "./components/Sidebar/Sidebar";
 import GridBoard from "./components/GridBoard/GridBoard";
 import MetricsPanel from "./components/MetricsPanel/MetricsPanel";
+import DQNVisualizer from "./components/DQNVisualizer/DQNVisualizer";
 import { useState, useEffect } from "react";
 
 export default function App() {
@@ -13,6 +14,7 @@ export default function App() {
   const [qTable, setQTable] = useState(Array(25).fill(0));
   const [fullQTable, setFullQTable] = useState(Array(25).fill([0, 0, 0, 0]));
   const [logs, setLogs] = useState(["[00:00:00] Waiting for data..."]);
+  const [trainingMetrics, setTrainingMetrics] = useState(null);
 
   useEffect(() => {
     fetch(`${import.meta.env.VITE_API_URL}/getgrid`)
@@ -28,6 +30,7 @@ export default function App() {
         if (data.q_table) setQTable(data.q_table);
         if (data.full_q_table) setFullQTable(data.full_q_table);
         if (data.logs) setLogs(data.logs);
+        if (data.metrics) setTrainingMetrics(data.metrics);
       })
       .catch((err) => console.log("Error fetching metrics:", err));
   };
@@ -61,7 +64,10 @@ export default function App() {
   return (
     <div className="app-layout">
       <Sidebar setLocked={setLocked} grid={grid} robot={robot} setRobot={setRobot} fetchMetrics={fetchMetrics} btStatus={btStatus} setBtStatus={setBtStatus} />
-      <GridBoard locked={locked} grid={grid} setGrid={setGrid} robot={robot} setRobot={setRobot} btStatus={btStatus} />
+      <div className="main-content-area">
+        <GridBoard locked={locked} grid={grid} setGrid={setGrid} robot={robot} setRobot={setRobot} btStatus={btStatus} />
+        <DQNVisualizer metrics={trainingMetrics} />
+      </div>
       <MetricsPanel qTable={qTable} fullQTable={fullQTable} grid={grid} logs={logs} />
     </div>
   );

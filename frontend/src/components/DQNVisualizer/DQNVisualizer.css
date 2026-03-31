@@ -1,0 +1,195 @@
+.dqn-visualizer {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 8px 12px;
+  color: #1e293b;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1; /* allow it to fill remaining space */
+  min-height: 0;
+}
+
+.dqn-header h2 {
+  font-size: 1.05rem;
+  margin: 0;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.dqn-placeholder {
+  color: #64748b;
+  font-size: 0.85rem;
+  font-style: italic;
+  text-align: center;
+  padding: 10px 0;
+}
+
+.dqn-panels {
+  display: flex;
+  gap: 10px;
+  flex: 1;
+  min-height: 0;
+}
+
+.dqn-panel {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 8px;
+  flex: 1;
+  min-width: 0; /* Allows panel to shrink */
+  display: flex;
+  flex-direction: column;
+}
+
+.dqn-panel h3 {
+  font-size: 0.85rem;
+  margin: 0 0 8px 0;
+  color: #334155;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 4px;
+  font-weight: 600;
+}
+
+/* Network Flow */
+.network-flow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  background: #ffffff;
+  padding: 6px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  flex: 1;
+}
+
+.nn-layer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 4px;
+  border-radius: 6px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  flex: 1 1 auto;
+  text-align: center;
+  min-width: 0;
+}
+
+.nn-layer.input-layer { background: #f0fdf4; border-color: #bbf7d0; }
+.nn-layer.output-layer { background: #fff1f2; border-color: #fecdd3; }
+
+.layer-name { font-size: 0.7rem; font-weight: 600; color: #0f172a; }
+.layer-size { font-size: 0.6rem; color: #475569; margin-top: 2px; }
+
+.nn-arrow { color: #94a3b8; font-size: 0.9rem; margin: 0 2px; }
+
+.architecture-text {
+  font-size: 0.65rem;
+  color: #64748b;
+  text-align: center;
+  font-family: monospace;
+  word-break: break-all;
+  margin: 0;
+}
+
+/* Memory Map */
+.memory-stats { margin-bottom: 6px; }
+
+.stat-box {
+  display: flex;
+  justify-content: space-between;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+}
+
+.stat-label { color: #475569; }
+.stat-value { color: #10b981; font-weight: 600; }
+
+.memory-list-container {
+  overflow-y: auto;
+  flex: 1;
+}
+
+.memory-list-container h4 {
+  font-size: 0.75rem;
+  color: #334155;
+  margin: 0 0 6px 0;
+  font-weight: 600;
+}
+
+.memory-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.memory-item {
+  display: flex;
+  gap: 4px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  padding: 4px;
+  border-radius: 4px;
+  align-items: center;
+  font-size: 0.7rem;
+}
+
+.exp-badge {
+  padding: 2px 4px;
+  border-radius: 3px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  font-size: 0.65rem;
+}
+
+.exp-badge.coord { font-family: monospace; font-weight: bold; color: #475569; background: #e2e8f0; border-color: #cbd5e1; }
+.exp-badge.action { font-family: monospace; font-weight: bold; color: #2563eb; background: #eff6ff; border-color: #bfdbfe; }
+.exp-badge.reward.positive { color: #059669; background: #d1fae5; border-color: #a7f3d0; }
+.exp-badge.reward.negative { color: #e11d48; background: #ffe4e6; border-color: #fecdd3; }
+.exp-badge.done { color: #475569; }
+.exp-badge.done.is-done { color: #d97706; background: #fef3c7; border-color: #fde68a; }
+
+.no-data { font-size: 0.75rem; color: #94a3b8; font-style: italic; margin: 0; }
+
+/* Loss Graph */
+.mini-chart {
+  display: flex;
+  align-items: flex-end;
+  height: 40px;
+  gap: 2px;
+  margin-bottom: 6px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  padding: 4px;
+  border-radius: 4px;
+  flex: 1;
+}
+
+.chart-bar {
+  flex: 1;
+  background: linear-gradient(180deg, #f43f5e 0%, rgba(244, 63, 94, 0.2) 100%);
+  border-radius: 1px 1px 0 0;
+  min-height: 2px;
+  transition: height 0.3s ease;
+}
+
+.chart-bar:hover { background: #e11d48; }
+
+.loss-value {
+  margin: 0;
+  font-size: 0.75rem;
+  color: #e11d48;
+  font-weight: 600;
+  text-align: right;
+}

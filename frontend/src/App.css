@@ -13,3 +13,12 @@
     min-height: 100vh;
   }
 }
+
+.main-content-area {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden; /* Changed from overflow-y: auto to ensure it fits the grid exactly */
+  padding: 10px;
+  gap: 10px;
+}
