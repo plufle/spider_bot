@@ -79,6 +79,49 @@ def get_state_tensor(client_grid, start_state):
     # Add batch dimension as [1, 50]
     return torch.cat((map_features, pos_features)).unsqueeze(0).to(device)
 
+def update_training_metrics():
+    global training_metrics
+    training_metrics['memory_size'] = len(memory)
+    recent = list(memory.buffer)[-50:] if len(memory) > 0 else []
+    def format_t(t):
+        s, a, r, _, d = t
+        pos_idx = s[0][25:].argmax().item() # s is shape [1, 50]
+        row = pos_idx // 5
+        col = pos_idx % 5
+        return {
+            "action": ["N","E","S","W"][a], 
+            "reward": float(r), 
+            "done": bool(d),
+            "coord": f"[{row},{col}]"
+        }
+    training_metrics['recent_memory'] = [format_t(t) for t in recent]
+
+
+def optimize_model(batch_size=32, gamma=0.9):
+    if len(memory) < batch_size: return 0.0
+    transitions = memory.sample(batch_size)
+    
+    # Unpack and stack states and next_states handling the [1, 50] shape from unsqueeze(0)
+    batch_state = torch.cat([t[0] for t in transitions])
+    batch_action = torch.tensor([t[1] for t in transitions]).unsqueeze(1).to(device)
+    batch_reward = torch.tensor([t[2] for t in transitions], dtype=torch.float32).to(device)
+    batch_next_state = torch.cat([t[3] for t in transitions])
+    batch_done = torch.tensor([t[4] for t in transitions], dtype=torch.float32).to(device)
+    
+    state_action_values = policy_net(batch_state).gather(1, batch_action).squeeze(-1)
+    
+    with torch.no_grad():
+        next_state_values = target_net(batch_next_state).max(1)[0]
+    expected_state_action_values = batch_reward + (gamma * next_state_values * (1 - batch_done))
+    
+    loss = F.mse_loss(state_action_values, expected_state_action_values)
+    
+    optimizer.zero_grad()
+    loss.backward()
+    optimizer.step()
+    
+    return loss.item()
+
 class SimulatedBluetooth:
     def __init__(self):
         self.is_open = True
@@ -203,12 +246,14 @@ def get_robot_state():
 
 @app.route("/explore", methods=['POST'])
 def explore():
-    global robot_grid
+    global robot_grid, latest_grid
     data = request.get_json()
     client_grid = data.get('grid', [])
     if not client_grid or len(client_grid) != 25:
         log_message("Error: Invalid grid received.")
         return jsonify({"status": "error"})
+
+    latest_grid = client_grid
 
     try:
         start_state = client_grid.index(1)
@@ -225,8 +270,6 @@ def explore():
     
     def execute_exploration():
         global robot_pos, is_exploring, robot_grid
-        path = []
-        visited = set()
         current_orientation = 0 
         
         def turn_to(target_dir):
@@ -244,49 +287,96 @@ def explore():
             current_orientation = target_dir
             time.sleep(0.5)
 
-        def dfs(current):
-            global robot_pos
-            robot_pos = current
-            visited.add(current)
-            path.append(current)
-            robot_grid[current] = client_grid[current]
-            
-            if client_grid[current] in [-100, 100]:
-                return
-                
-            for action in range(4):
-                next_state = get_next_state(current, action)
-                if next_state != current and next_state not in visited:
-                    if client_grid[next_state] == -100:
-                        visited.add(next_state)
-                        robot_grid[next_state] = -100
-                        log_message(f"Obstacle at {next_state}")
-                        continue
-                        
-                    turn_to(action)
-                    send_command('F', 'Forward')
-                    time.sleep(1)
+        log_message("Physical RL Full Mapping starting...")
+        
+        # Make sure metrics array exists 
+        if "loss_history" not in training_metrics:
+            training_metrics['loss_history'] = []
 
-                    dfs(next_state)
-                    
-                    turn_to(action)
-                    send_command('B', 'Backward')
-                    time.sleep(1)
-                    
-                    path.append(current)
-                    robot_pos = current
-
-        log_message("Exploration starting...")
         if bt and bt.is_open:
             send_command('U', 'Stand Up')
             time.sleep(1)
             
-        dfs(start_state)
+        current = start_state
+        robot_pos = current
+        robot_grid[current] = client_grid[current]
+        
+        steps = 0
+        max_steps = 150
+        epsilon = 0.8 # High exploration to ensure entire mapping
+        mapped_states = set([start_state])
+        
+        while len(mapped_states) < 25 and steps < max_steps:
+            st_ten = get_state_tensor(client_grid, current)
+            
+            if random.random() < epsilon:
+                # Bias action to explicitly seek out unmapped regions so we don't waste time globally
+                unmapped_actions = []
+                for a in range(4):
+                    n_s = get_next_state(current, a)
+                    if n_s != current and n_s not in mapped_states:
+                        unmapped_actions.append(a)
+                if unmapped_actions:
+                    action = random.choice(unmapped_actions)
+                else:
+                    action = random.randint(0, 3)
+            else:
+                with torch.no_grad():
+                    action = policy_net(st_ten).argmax().item()
+                    
+            next_state = get_next_state(current, action)
+            
+            if next_state == current:
+                # Boundary hit (stays in place)
+                memory.push(st_ten, action, -5, st_ten, False)
+                update_training_metrics()
+                steps += 1
+                continue
+                
+            nst_ten = get_state_tensor(client_grid, next_state)
+            is_new = next_state not in mapped_states
+            mapped_states.add(next_state)
+            
+            if client_grid[next_state] == -100:
+                robot_grid[next_state] = -100
+                if is_new:
+                    log_message(f"Obstacle mapped at {next_state}")
+                
+                # Push Obstacle Memory and train
+                memory.push(st_ten, action, -100, nst_ten, True)
+                update_training_metrics()
+                loss = optimize_model()
+                if loss > 0:
+                    training_metrics['loss_history'].append(loss)
+                steps += 1
+                continue # Don't move physically, try another direction
+                
+            # Physically move
+            turn_to(action)
+            send_command('F', 'Forward')
+            time.sleep(1)
+            
+            reward = 100 if client_grid[next_state] == 100 else -1
+            is_terminal = (client_grid[next_state] == 100)
+            
+            memory.push(st_ten, action, reward, nst_ten, is_terminal)
+            update_training_metrics()
+            loss = optimize_model()
+            if loss > 0:
+                training_metrics['loss_history'].append(loss)
+                
+            robot_pos = next_state
+            robot_grid[next_state] = client_grid[next_state]
+            current = next_state
+            steps += 1
+            
+            if len(memory) % 10 == 0:
+                target_net.load_state_dict(policy_net.state_dict())
         
         if bt and bt.is_open:
             send_command('T', 'Sit')
             
-        log_message("Exploration completed.")
+        log_message(f"Mapping completed or max steps reached ({steps}).")
         is_exploring = False
 
     thread = threading.Thread(target=execute_exploration)
@@ -359,28 +449,10 @@ def train():
             steps += 1
             
             if len(memory) >= batch_size:
-                transitions = memory.sample(batch_size)
-                # Unpack and stack states and next_states handling the [1, 50] shape from unsqueeze(0)
-                batch_state = torch.cat([t[0] for t in transitions])
-                batch_action = torch.tensor([t[1] for t in transitions]).unsqueeze(1).to(device)
-                batch_reward = torch.tensor([t[2] for t in transitions], dtype=torch.float32).to(device)
-                batch_next_state = torch.cat([t[3] for t in transitions])
-                batch_done = torch.tensor([t[4] for t in transitions], dtype=torch.float32).to(device)
-                
-                state_action_values = policy_net(batch_state).gather(1, batch_action).squeeze(-1)
-                
-                with torch.no_grad():
-                    next_state_values = target_net(batch_next_state).max(1)[0]
-                expected_state_action_values = batch_reward + (gamma * next_state_values * (1 - batch_done))
-                
-                loss = F.mse_loss(state_action_values, expected_state_action_values)
-                
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
-                
-                total_loss += loss.item()
-                loss_steps += 1
+                loss = optimize_model(batch_size, gamma)
+                if loss > 0:
+                    total_loss += loss
+                    loss_steps += 1
                 
         if epsilon > epsilon_min:
             epsilon *= epsilon_decay
@@ -391,20 +463,7 @@ def train():
         if loss_steps > 0:
             training_metrics['loss_history'].append(total_loss / loss_steps)
 
-    training_metrics['memory_size'] = len(memory)
-    recent = list(memory.buffer)[-50:] if len(memory) > 0 else []
-    def format_t(t):
-        s, a, r, _, d = t
-        pos_idx = s[0][25:].argmax().item() # s is shape [1, 50]
-        row = pos_idx // 5
-        col = pos_idx % 5
-        return {
-            "action": ["N","E","S","W"][a], 
-            "reward": float(r), 
-            "done": bool(d),
-            "coord": f"[{row},{col}]"
-        }
-    training_metrics['recent_memory'] = [format_t(t) for t in recent]
+    update_training_metrics()
 
     log_message("Finished DQN Training.")
     return jsonify({"status": "success"})
