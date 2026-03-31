@@ -8,6 +8,7 @@ export default function App() {
   const [locked, setLocked] = useState(false);
   const [grid, setGrid] = useState(Array(5 * 5).fill(0));
   const [robot, setRobot] = useState(Array(5 * 5).fill(0));
+  const [btStatus, setBtStatus] = useState("offline");
   
   const [qTable, setQTable] = useState(Array(25).fill(0));
   const [fullQTable, setFullQTable] = useState(Array(25).fill([0, 0, 0, 0]));
@@ -33,12 +34,34 @@ export default function App() {
   
   useEffect(() => {
     fetchMetrics();
+    
+    // Poll robot state every 500ms
+    const interval = setInterval(() => {
+      fetch(`${import.meta.env.VITE_API_URL}/robot_state`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.robot) setRobot(data.robot);
+          if (data.bt_status) setBtStatus(data.bt_status);
+          
+          // Lock UI if exploration is active
+          // Only change lock state if needed to prevent constant re-renders
+          if (data.is_exploring !== undefined) {
+             setLocked(data.is_exploring);
+          }
+        })
+        .catch((err) => console.log("State polling error:", err));
+        
+       // Also periodically update logs during exploration
+       fetchMetrics(); 
+    }, 500);
+
+    return () => clearInterval(interval);
   }, []);
 
   return (
     <div className="app-layout">
-      <Sidebar setLocked={setLocked} grid={grid} robot={robot} setRobot={setRobot} fetchMetrics={fetchMetrics} />
-      <GridBoard locked={locked} grid={grid} setGrid={setGrid} robot={robot} setRobot={setRobot} />
+      <Sidebar setLocked={setLocked} grid={grid} robot={robot} setRobot={setRobot} fetchMetrics={fetchMetrics} btStatus={btStatus} setBtStatus={setBtStatus} />
+      <GridBoard locked={locked} grid={grid} setGrid={setGrid} robot={robot} setRobot={setRobot} btStatus={btStatus} />
       <MetricsPanel qTable={qTable} fullQTable={fullQTable} grid={grid} logs={logs} />
     </div>
   );

@@ -3,47 +3,33 @@ import { useEffect } from "react";
 
 export default function ActionButton({ text, primary, actionType, setLocked, grid, robot, setRobot, fetchMetrics }) {
   async function handleClick() {
-    if (actionType === "connect") return;
-    
     setLocked(true);
-    const endpoint = actionType === "explore" ? "/explore" : "/train";
+    let endpoint = "";
+    if (actionType === "explore") endpoint = "/explore";
+    else if (actionType === "train") endpoint = "/train";
+    else if (actionType === "connect") endpoint = "/connect";
+    
     let data;
     
     try {
+      // Connect might not need the grid body, but it doesn't hurt to send it or we can pass empty JSON 
+      // For consistency, we'll send empty body for connect, grid for others
+      const bodyPayload = actionType === "connect" ? {} : { grid: grid };
+      
       const res = await fetch(`${import.meta.env.VITE_API_URL}${endpoint}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ grid: grid }),
+        body: JSON.stringify(bodyPayload),
       });
 
       data = await res.json();
       console.log(data.status);
       
-      if (actionType === "explore" && data.path) {
-        // Start from an empty grid and build it up as the robot explores
-        let progressiveGrid = Array(25).fill(0); 
-        
-        if (data.path.length > 0) {
-            data.path.forEach((stateIndex, step) => {
-              setTimeout(() => {
-                 progressiveGrid[stateIndex] = data.robot[stateIndex];
-                 let tempGrid = [...progressiveGrid];
-                 
-                 // Display the robot on the current step if it's not an obstacle.
-                 // Otherwise, we just map it (it stays red obstacle) and next step it "retreats". 
-                 if (data.robot[stateIndex] !== -100) {
-                    tempGrid[stateIndex] = 2; 
-                 }
-                 setRobot(tempGrid);
-              }, step * 300);
-            });
-            
-            setTimeout(() => {
-               setRobot([...data.robot]);
-            }, data.path.length * 300);
-        }
+      if (actionType === "connect" && data.bt_status) {
+        // If connecting, wait for next polling or manually push if parent passed it down
+        // It's handled by setInterval globally, or we can just fetchMetrics to force sync
       }
       
       if (fetchMetrics) fetchMetrics();
@@ -51,9 +37,10 @@ export default function ActionButton({ text, primary, actionType, setLocked, gri
     } catch (err) {
       console.error(err);
     } finally {
-      if (actionType === "explore") {
-         setTimeout(() => setLocked(false), (data?.path?.length || 0) * 300 + 100);
-      } else {
+      // The background thread unlocks the UI automatically when exploration ends
+      // Because App.jsx is syncing `is_exploring` to `locked`.
+      // We only manually unlock for connect and train. 
+      if (actionType !== "explore") {
          setLocked(false);
       }
     }

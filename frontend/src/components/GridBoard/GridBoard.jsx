@@ -2,7 +2,7 @@ import "./GridBoard.css";
 import GridCell from "../GridCell/GridCell";
 const size = 5;
 
-export default function GridBoard({locked,grid,setGrid,robot,setRobot}) {
+export default function GridBoard({locked,grid,setGrid,robot,setRobot,btStatus}) {
   function updateGrid(id) {
     if(locked) return;
     setGrid((prev) => {
@@ -53,8 +53,8 @@ export default function GridBoard({locked,grid,setGrid,robot,setRobot}) {
         {/* Robot View */}
         <div className="board-container">
           <div className="board-header">
-            <h1>Robot Perception</h1>
-            <span className="status-badge sensor">LIDAR</span>
+            <h1>Robot Perspective</h1>
+            <span className={`status-badge sensor ${btStatus}`}>{btStatus === "online" ? "ONLINE" : "OFFLINE"}</span>
           </div>
           <div className="grid">
             {robot.map((val, i) => {
